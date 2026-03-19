@@ -1,0 +1,13 @@
+{
+  "name": "cobrelан-web",
+  "version": "1.0.0",
+  "description": "CobreLAN — Snake multiplayer para navegador via WebSocket",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev":   "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

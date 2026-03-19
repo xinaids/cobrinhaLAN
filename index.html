@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cobrinhaLAN 🐍</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:   #00ff88;
+    --green2:  #00cc66;
+    --dim:     #00552a;
+    --bg:      #050f08;
+    --panel:   #080f0a;
+    --border:  #0f3020;
+    --p0: #33e566; --p1: #3d9dff; --p2: #ff7a1a; --p3: #f23490;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* scanlines */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+    pointer-events:none; z-index:9999;
+  }
+
+  header {
+    width:100%; text-align:center;
+    padding: 18px 0 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-family:'Orbitron',sans-serif;
+    font-size: clamp(1.4rem,4vw,2.4rem);
+    font-weight:900;
+    letter-spacing:.2em;
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green2), 0 0 60px #00ff8844;
+  }
+  header p { color:var(--dim); font-size:.75rem; margin-top:4px; letter-spacing:.15em; }
+
+  .layout {
+    display: flex;
+    gap: 18px;
+    padding: 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 980px;
+  }
+
+  /* ── Canvas ── */
+  #gameWrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  canvas {
+    display: block;
+    border: 2px solid var(--border);
+    box-shadow: 0 0 30px #00ff8820, inset 0 0 30px #000;
+    image-rendering: pixelated;
+  }
+
+  #overlay {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    background: rgba(5,15,8,.82);
+    gap:14px;
+  }
+  #overlay h2 {
+    font-family:'Orbitron',sans-serif;
+    font-size:clamp(1.1rem,3vw,1.9rem);
+    letter-spacing:.15em;
+    text-shadow: 0 0 15px var(--green);
+  }
+  #overlay p  { color:var(--dim); font-size:.8rem; letter-spacing:.1em; text-align:center; max-width:280px; }
+
+  .btn {
+    background:transparent; border:1.5px solid var(--green);
+    color:var(--green); font-family:'Share Tech Mono',monospace;
+    font-size:.85rem; letter-spacing:.12em;
+    padding:10px 28px; cursor:pointer;
+    text-transform:uppercase;
+    transition: background .15s, box-shadow .15s;
+  }
+  .btn:hover { background:var(--green); color:#050f08; box-shadow:0 0 18px var(--green); }
+  .btn:disabled { opacity:.3; cursor:not-allowed; }
+
+  .name-row { display:flex; gap:8px; align-items:center; }
+  .name-row input {
+    background:#0a1a0f; border:1px solid var(--border); color:var(--green);
+    font-family:'Share Tech Mono',monospace; font-size:.85rem;
+    padding:8px 12px; outline:none; width:150px;
+    letter-spacing:.05em;
+  }
+  .name-row input:focus { border-color:var(--green); box-shadow:0 0 8px #00ff8840; }
+
+  /* ── Side panel ── */
+  .panel {
+    width: 220px;
+    display:flex; flex-direction:column; gap:12px;
+    min-width:180px;
+  }
+
+  .panel-box {
+    border:1px solid var(--border);
+    padding:14px;
+  }
+  .panel-box h3 {
+    font-family:'Orbitron',sans-serif; font-size:.7rem;
+    letter-spacing:.2em; color:var(--dim);
+    border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px;
+  }
+
+  .player-entry {
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:8px; font-size:.8rem;
+  }
+  .player-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .player-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .player-score { color:var(--green); font-weight:bold; }
+  .player-dead  { opacity:.35; text-decoration:line-through; }
+
+  .key-grid {
+    display:grid; grid-template-columns:repeat(3,32px); gap:3px;
+    justify-content:center; margin-top:4px;
+  }
+  .key {
+    width:32px; height:28px; border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:.7rem; color:var(--dim); transition:all .1s;
+  }
+  .key.active { border-color:var(--green); color:var(--green); background:#0a1a0f; }
+  .key-empty  { border-color:transparent; }
+
+  #status {
+    font-size:.72rem; color:var(--dim); letter-spacing:.08em;
+    text-align:center; padding:6px 0;
+  }
+  #status.ok { color:var(--green2); }
+  #status.err{ color:#ff4444; }
+
+  /* ── Mobile controls ── */
+  #mobileCtrl {
+    display:none;
+    grid-template-columns:repeat(3,56px);
+    grid-template-rows:repeat(3,56px);
+    gap:4px; margin-top:10px;
+  }
+  @media (pointer:coarse) { #mobileCtrl { display:grid; } }
+
+  .mkey {
+    background:#0a180d; border:1.5px solid var(--border);
+    color:var(--green); font-size:1.2rem;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:4px; cursor:pointer; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .1s;
+  }
+  .mkey:active { background:var(--green); color:#050f08; }
+
+  /* ── Game over scores ── */
+  #goScores { font-size:.8rem; color:var(--dim); }
+  #goScores span { color:var(--green); }
+
+  .flash { animation: flash .3s ease; }
+  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:.2} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐍 cobrinhaLAN</h1>
+  <p>MULTIPLAYER · REDE LOCAL · WEBSOCKET</p>
+</header>
+
+<div class="layout">
+
+  <!-- Canvas -->
+  <div id="gameWrap">
+    <canvas id="c"></canvas>
+
+    <div id="overlay">
+      <h2 id="ovTitle">cobrinhaLAN</h2>
+      <p  id="ovSub">Conecte ao servidor e entre na partida</p>
+      <div class="name-row">
+        <input id="nameInput" maxlength="16" placeholder="Seu nome" value="">
+        <button class="btn" id="btnConnect">ENTRAR</button>
+      </div>
+      <div id="status">⬡ desconectado</div>
+      <button class="btn" id="btnStart"  style="display:none">INICIAR JOGO</button>
+      <button class="btn" id="btnReplay" style="display:none">JOGAR NOVAMENTE</button>
+      <div id="goScores"></div>
+    </div>
+
+    <!-- Mobile D-pad -->
+    <div id="mobileCtrl">
+      <div></div>
+      <div class="mkey" id="mUp">▲</div>
+      <div></div>
+      <div class="mkey" id="mLeft">◀</div>
+      <div></div>
+      <div class="mkey" id="mRight">▶</div>
+      <div></div>
+      <div class="mkey" id="mDown">▼</div>
+      <div></div>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="panel">
+    <div class="panel-box">
+      <h3>JOGADORES</h3>
+      <div id="playerList"><span style="color:var(--dim);font-size:.75rem">Aguardando...</span></div>
+    </div>
+
+    <div class="panel-box">
+      <h3>CONTROLES</h3>
+      <div class="key-grid">
+        <div class="key-empty"></div>
+        <div class="key" id="kUp">W▲</div>
+        <div class="key-empty"></div>
+        <div class="key" id="kLeft">A◀</div>
+        <div class="key" id="kDown">S▼</div>
+        <div class="key" id="kRight">D▶</div>
+      </div>
+    </div>
+
+    <div class="panel-box">
+      <h3>SERVIDOR</h3>
+      <div style="font-size:.72rem;color:var(--dim);line-height:1.7">
+        <div>node server.js</div>
+        <div style="color:var(--green2);margin-top:4px">ws://IP:12345</div>
+        <div style="margin-top:8px;color:var(--border)">────────────</div>
+        <div id="wsUrlDisplay" style="color:var(--dim);margin-top:4px;word-break:break-all;font-size:.68rem"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const GRID   = 30;
+const COLORS = ['#33e566','#3d9dff','#ff7a1a','#f23490'];
+const WS_URL = `ws://${location.hostname}:12345`;
+
+// ── Canvas setup ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let CELL, SIZE;
+
+function resizeCanvas() {
+  const maxSide = Math.min(window.innerWidth - 260, window.innerHeight - 140, 600);
+  SIZE = Math.floor(maxSide / GRID) * GRID;
+  CELL = SIZE / GRID;
+  canvas.width = canvas.height = SIZE;
+  if (gameData) draw();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ws        = null;
+let myId      = -1;
+let myColor   = COLORS[0];
+let gameData  = null;
+let connected = false;
+let activeKeys = new Set();
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connect() {
+  const name = document.getElementById('nameInput').value.trim() || 'Jogador';
+  setStatus('⟳ conectando...', '');
+  document.getElementById('btnConnect').disabled = true;
+
+  try { ws = new WebSocket(WS_URL); }
+  catch(e) { setStatus('✗ WS não suportado', 'err'); return; }
+
+  document.getElementById('wsUrlDisplay').textContent = WS_URL;
+
+  ws.onopen = () => {
+    connected = true;
+    ws.send(JSON.stringify({ type:'setname', name }));
+    setStatus('✓ conectado — aguardando início', 'ok');
+  };
+
+  ws.onmessage = ({ data }) => {
+    const msg = JSON.parse(data);
+    switch (msg.type) {
+      case 'welcome':
+        myId = msg.id; myColor = COLORS[myId];
+        document.getElementById('btnStart').style.display = 'block';
+        break;
+      case 'reject':
+        setStatus('✗ ' + msg.reason, 'err');
+        document.getElementById('btnConnect').disabled = false;
+        break;
+      case 'state':
+        gameData = msg;
+        updatePlayerList(msg.players);
+        draw();
+        if (msg.gameState === 'playing') hideOverlay();
+        break;
+      case 'start':
+        hideOverlay();
+        break;
+      case 'death':
+        if (msg.id === myId) flashCanvas();
+        break;
+      case 'gameover':
+        showGameOver(msg);
+        break;
+    }
+  };
+
+  ws.onerror = () => { setStatus('✗ erro de conexão', 'err'); document.getElementById('btnConnect').disabled=false; };
+  ws.onclose = () => {
+    connected = false;
+    setStatus('⬡ desconectado', 'err');
+    document.getElementById('btnConnect').disabled = false;
+    document.getElementById('btnStart').style.display = 'none';
+    showLobby();
+  };
+}
+
+function sendDir(dir) {
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ type:'dir', dir }));
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────────────
+let pulse = 0;
+
+function draw() {
+  if (!gameData || !CELL) return;
+  pulse += 0.07;
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  // Background grid
+  for (let y=0; y<GRID; y++) for (let x=0; x<GRID; x++) {
+    ctx.fillStyle = (x+y)%2===0 ? '#050c08' : '#07110a';
+    ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+  }
+
+  // Food
+  const f = gameData.food;
+  const fp = Math.sin(pulse)*0.5+0.5;
+  const grad = ctx.createRadialGradient(
+    (f.x+.5)*CELL, (f.y+.5)*CELL, 1,
+    (f.x+.5)*CELL, (f.y+.5)*CELL, CELL*.7
+  );
+  grad.addColorStop(0, `rgba(255,${Math.floor(80+fp*100)},50,1)`);
+  grad.addColorStop(1, `rgba(180,30,10,0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc((f.x+.5)*CELL, (f.y+.5)*CELL, CELL*.38+fp*1.5, 0, Math.PI*2);
+  ctx.fill();
+
+  // Snakes
+  for (const p of gameData.players) {
+    if (!p.body || p.body.length === 0) continue;
+    const col = p.color || COLORS[p.id];
+    const dim = p.alive ? 1 : 0.28;
+
+    for (let i = p.body.length-1; i >= 0; i--) {
+      const seg = p.body[i];
+      const isHead = i === 0;
+      const t = i / Math.max(p.body.length-1, 1);
+      const sh = isHead ? CELL*.06 : CELL*.13 + t*CELL*.08;
+
+      ctx.globalAlpha = dim * (isHead ? 1 : 0.85 - t*0.3);
+      ctx.fillStyle = isHead ? lighten(col, .25) : col;
+      roundRect(ctx, seg.x*CELL+sh, seg.y*CELL+sh, CELL-sh*2, CELL-sh*2, CELL*.18);
+
+      // highlight my snake's head
+      if (isHead && p.id === myId && p.alive) {
+        ctx.globalAlpha = .55;
+        ctx.fillStyle = '#ffffff';
+        roundRect(ctx, seg.x*CELL+sh*.3, seg.y*CELL+sh*.3, CELL-sh*.6, CELL-sh*.6, CELL*.2);
+        ctx.globalAlpha = dim;
+        ctx.fillStyle = lighten(col, .3);
+        roundRect(ctx, seg.x*CELL+sh, seg.y*CELL+sh, CELL-sh*2, CELL-sh*2, CELL*.18);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Score badges
+  for (const p of gameData.players) {
+    if (!p.body || p.body.length===0 || !p.alive) continue;
+    const h = p.body[0];
+    ctx.font = `bold ${Math.max(10,CELL*.38)}px 'Share Tech Mono',monospace`;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = .9;
+    ctx.fillText(p.score, (h.x+.1)*CELL, (h.y-.12)*CELL);
+    ctx.globalAlpha = 1;
+  }
+
+  // Waiting overlay on canvas
+  if (gameData.gameState === 'lobby') {
+    ctx.fillStyle = 'rgba(5,15,8,.55)';
+    ctx.fillRect(0,0,SIZE,SIZE);
+  }
+}
+
+function roundRect(ctx, x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);   ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);     ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath(); ctx.fill();
+}
+
+function lighten(hex, amt) {
+  const n = parseInt(hex.slice(1),16);
+  const r=Math.min(255,((n>>16)&0xff)+Math.round(amt*80));
+  const g=Math.min(255,((n>>8)&0xff)+Math.round(amt*80));
+  const b=Math.min(255,(n&0xff)+Math.round(amt*80));
+  return `rgb(${r},${g},${b})`;
+}
+
+// Render loop
+;(function loop() { draw(); requestAnimationFrame(loop); })();
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function setStatus(txt, cls) {
+  const el = document.getElementById('status');
+  el.textContent = txt; el.className = cls;
+}
+
+function hideOverlay() {
+  document.getElementById('overlay').style.display = 'none';
+}
+function showLobby() {
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  document.getElementById('ovTitle').textContent = 'cobrinhaLAN';
+  document.getElementById('ovSub').textContent = 'Conecte ao servidor e entre na partida';
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnReplay').style.display = 'none';
+  document.getElementById('goScores').innerHTML = '';
+  document.querySelector('.name-row').style.display = 'flex';
+}
+function showGameOver(msg) {
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  document.getElementById('ovTitle').textContent = '💀 FIM DE JOGO';
+  document.getElementById('ovSub').textContent = `Vencedor: ${msg.winner}`;
+  document.querySelector('.name-row').style.display = 'none';
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnReplay').style.display = 'block';
+
+  const scores = (msg.scores||[]).sort((a,b)=>b.score-a.score);
+  document.getElementById('goScores').innerHTML =
+    scores.map((s,i)=>`<div>${i+1}. ${s.name} — <span>${s.score} pts</span></div>`).join('');
+}
+
+function updatePlayerList(players) {
+  const el = document.getElementById('playerList');
+  if (!players.length) { el.innerHTML='<span style="color:var(--dim);font-size:.75rem">Aguardando...</span>'; return; }
+  el.innerHTML = players.map(p=>`
+    <div class="player-entry ${p.alive?'':'player-dead'}">
+      <div class="player-dot" style="background:${p.color}"></div>
+      <div class="player-name">${p.name}${p.id===myId?' (você)':''}</div>
+      <div class="player-score">${p.score}</div>
+    </div>
+  `).join('');
+}
+
+function flashCanvas() {
+  canvas.classList.add('flash');
+  setTimeout(()=>canvas.classList.remove('flash'),350);
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+document.getElementById('btnConnect').onclick = connect;
+document.getElementById('nameInput').addEventListener('keydown', e => { if(e.key==='Enter') connect(); });
+document.getElementById('btnStart').onclick = () => {
+  if (ws) ws.send(JSON.stringify({ type:'start' }));
+};
+document.getElementById('btnReplay').onclick = () => {
+  if (ws) ws.send(JSON.stringify({ type:'restart' }));
+  document.getElementById('btnReplay').style.display='none';
+};
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+const KEY_MAP = {
+  ArrowUp:'UP', KeyW:'UP', ArrowDown:'DOWN', KeyS:'DOWN',
+  ArrowLeft:'LEFT', KeyA:'LEFT', ArrowRight:'RIGHT', KeyD:'RIGHT'
+};
+const KEY_EL = { UP:'kUp', DOWN:'kDown', LEFT:'kLeft', RIGHT:'kRight' };
+
+document.addEventListener('keydown', e => {
+  const dir = KEY_MAP[e.code];
+  if (!dir) return;
+  e.preventDefault();
+  sendDir(dir);
+  activeKeys.add(dir);
+  const el = document.getElementById(KEY_EL[dir]);
+  if (el) el.classList.add('active');
+});
+document.addEventListener('keyup', e => {
+  const dir = KEY_MAP[e.code];
+  if (!dir) return;
+  activeKeys.delete(dir);
+  const el = document.getElementById(KEY_EL[dir]);
+  if (el) el.classList.remove('active');
+});
+
+// ── Mobile controls ───────────────────────────────────────────────────────────
+const mKeys = { mUp:'UP', mDown:'DOWN', mLeft:'LEFT', mRight:'RIGHT' };
+for (const [id, dir] of Object.entries(mKeys)) {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', e=>{ e.preventDefault(); sendDir(dir); }, {passive:false});
+  el.addEventListener('mousedown',  ()=> sendDir(dir));
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+resizeCanvas();
+</script>
+</body>
+</html>
