@@ -6,204 +6,213 @@
 <title>cobrinhaLAN 🐍</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --green:   #00ff88;
-    --green2:  #00cc66;
-    --dim:     #00552a;
-    --bg:      #050f08;
-    --panel:   #080f0a;
-    --border:  #0f3020;
-    --p0: #33e566; --p1: #3d9dff; --p2: #ff7a1a; --p3: #f23490;
-  }
+:root {
+  --green: #00ff88;
+  --green2: #00cc66;
+  --dim: #00552a;
+  --bg: #050f08;
+  --panel: #080f0a;
+  --border: #0f3020;
+  --p0: #33e566; --p1: #3d9dff; --p2: #ff7a1a; --p3: #f23490;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--green);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+  pointer-events:none; z-index:9999;
+}
+header {
+  width:100%; text-align:center;
+  padding: 18px 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-family:'Orbitron',sans-serif;
+  font-size: clamp(1.4rem,4vw,2.4rem);
+  font-weight:900;
+  letter-spacing:.2em;
+  color: var(--green);
+  text-shadow: 0 0 20px var(--green2), 0 0 60px #00ff8844;
+}
+header p { color:var(--dim); font-size:.75rem; margin-top:4px; letter-spacing:.15em; }
+.layout {
+  display: flex;
+  gap: 18px;
+  padding: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 980px;
+}
+#gameWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+canvas {
+  display: block;
+  border: 2px solid var(--border);
+  box-shadow: 0 0 30px #00ff8820, inset 0 0 30px #000;
+  image-rendering: pixelated;
+}
+#overlay {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background: rgba(5,15,8,.82);
+  gap:14px;
+}
+#overlay h2 {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(1.1rem,3vw,1.9rem);
+  letter-spacing:.15em;
+  text-shadow: 0 0 15px var(--green);
+}
+#overlay p { color:var(--dim); font-size:.8rem; letter-spacing:.1em; text-align:center; max-width:280px; }
+.btn {
+  background:transparent; border:1.5px solid var(--green);
+  color:var(--green); font-family:'Share Tech Mono',monospace;
+  font-size:.85rem; letter-spacing:.12em;
+  padding:10px 28px; cursor:pointer;
+  text-transform:uppercase;
+  transition: background .15s, box-shadow .15s;
+}
+.btn:hover { background:var(--green); color:#050f08; box-shadow:0 0 18px var(--green); }
+.btn:disabled { opacity:.3; cursor:not-allowed; }
+.name-row { display:flex; gap:8px; align-items:center; }
+.name-row input {
+  background:#0a1a0f; border:1px solid var(--border); color:var(--green);
+  font-family:'Share Tech Mono',monospace; font-size:.85rem;
+  padding:8px 12px; outline:none; width:150px;
+  letter-spacing:.05em;
+}
+.name-row input:focus { border-color:var(--green); box-shadow:0 0 8px #00ff8840; }
+.panel {
+  width: 220px;
+  display:flex; flex-direction:column; gap:12px;
+  min-width:180px;
+}
+.panel-box {
+  border:1px solid var(--border);
+  padding:14px;
+}
+.panel-box h3 {
+  font-family:'Orbitron',sans-serif; font-size:.7rem;
+  letter-spacing:.2em; color:var(--dim);
+  border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px;
+}
+.player-entry {
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:8px; font-size:.8rem;
+}
+.player-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.player-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.player-score { color:var(--green); font-weight:bold; }
+.player-dead { opacity:.35; text-decoration:line-through; }
+.key-grid {
+  display:grid; grid-template-columns:repeat(3,32px); gap:3px;
+  justify-content:center; margin-top:4px;
+}
+.key {
+  width:32px; height:28px; border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.7rem; color:var(--dim); transition:all .1s;
+}
+.key.active { border-color:var(--green); color:var(--green); background:#0a1a0f; }
+.key-empty { border-color:transparent; }
+#status {
+  font-size:.72rem; color:var(--dim); letter-spacing:.08em;
+  text-align:center; padding:6px 0;
+}
+#status.ok { color:var(--green2); }
+#status.err{ color:#ff4444; }
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+/* Countdown overlay */
+#countdown {
+  position:absolute; inset:0;
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center;
+  background: rgba(5,15,8,.7);
+  pointer-events:none;
+}
+#countdownNum {
+  font-family:'Orbitron',sans-serif;
+  font-size: clamp(4rem, 15vw, 8rem);
+  font-weight:900;
+  color: var(--green);
+  text-shadow: 0 0 40px var(--green2), 0 0 80px #00ff8866;
+  animation: countPulse .9s ease-out;
+}
+@keyframes countPulse {
+  0%   { transform: scale(1.6); opacity:0; }
+  30%  { opacity:1; }
+  100% { transform: scale(1);   opacity:1; }
+}
+#countdownLabel {
+  font-size:.8rem; letter-spacing:.3em; color:var(--dim); margin-top:8px;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--green);
-    font-family: 'Share Tech Mono', monospace;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-x: hidden;
-  }
+/* Mobile controls */
+#mobileCtrl {
+  display:none;
+  grid-template-columns:repeat(3,56px);
+  grid-template-rows:repeat(3,56px);
+  gap:4px; margin-top:10px;
+}
+@media (pointer:coarse) { #mobileCtrl { display:grid; } }
+.mkey {
+  background:#0a180d; border:1.5px solid var(--border);
+  color:var(--green); font-size:1.2rem;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:4px; cursor:pointer; user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .1s;
+}
+.mkey:active { background:var(--green); color:#050f08; }
 
-  /* scanlines */
-  body::before {
-    content:'';
-    position:fixed; inset:0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
-    pointer-events:none; z-index:9999;
-  }
-
-  header {
-    width:100%; text-align:center;
-    padding: 18px 0 6px;
-    border-bottom: 1px solid var(--border);
-  }
-  header h1 {
-    font-family:'Orbitron',sans-serif;
-    font-size: clamp(1.4rem,4vw,2.4rem);
-    font-weight:900;
-    letter-spacing:.2em;
-    color: var(--green);
-    text-shadow: 0 0 20px var(--green2), 0 0 60px #00ff8844;
-  }
-  header p { color:var(--dim); font-size:.75rem; margin-top:4px; letter-spacing:.15em; }
-
-  .layout {
-    display: flex;
-    gap: 18px;
-    padding: 18px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    max-width: 980px;
-  }
-
-  /* ── Canvas ── */
-  #gameWrap {
-    position: relative;
-    flex-shrink: 0;
-  }
-  canvas {
-    display: block;
-    border: 2px solid var(--border);
-    box-shadow: 0 0 30px #00ff8820, inset 0 0 30px #000;
-    image-rendering: pixelated;
-  }
-
-  #overlay {
-    position:absolute; inset:0;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    background: rgba(5,15,8,.82);
-    gap:14px;
-  }
-  #overlay h2 {
-    font-family:'Orbitron',sans-serif;
-    font-size:clamp(1.1rem,3vw,1.9rem);
-    letter-spacing:.15em;
-    text-shadow: 0 0 15px var(--green);
-  }
-  #overlay p  { color:var(--dim); font-size:.8rem; letter-spacing:.1em; text-align:center; max-width:280px; }
-
-  .btn {
-    background:transparent; border:1.5px solid var(--green);
-    color:var(--green); font-family:'Share Tech Mono',monospace;
-    font-size:.85rem; letter-spacing:.12em;
-    padding:10px 28px; cursor:pointer;
-    text-transform:uppercase;
-    transition: background .15s, box-shadow .15s;
-  }
-  .btn:hover { background:var(--green); color:#050f08; box-shadow:0 0 18px var(--green); }
-  .btn:disabled { opacity:.3; cursor:not-allowed; }
-
-  .name-row { display:flex; gap:8px; align-items:center; }
-  .name-row input {
-    background:#0a1a0f; border:1px solid var(--border); color:var(--green);
-    font-family:'Share Tech Mono',monospace; font-size:.85rem;
-    padding:8px 12px; outline:none; width:150px;
-    letter-spacing:.05em;
-  }
-  .name-row input:focus { border-color:var(--green); box-shadow:0 0 8px #00ff8840; }
-
-  /* ── Side panel ── */
-  .panel {
-    width: 220px;
-    display:flex; flex-direction:column; gap:12px;
-    min-width:180px;
-  }
-
-  .panel-box {
-    border:1px solid var(--border);
-    padding:14px;
-  }
-  .panel-box h3 {
-    font-family:'Orbitron',sans-serif; font-size:.7rem;
-    letter-spacing:.2em; color:var(--dim);
-    border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px;
-  }
-
-  .player-entry {
-    display:flex; align-items:center; gap:8px;
-    margin-bottom:8px; font-size:.8rem;
-  }
-  .player-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-  .player-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .player-score { color:var(--green); font-weight:bold; }
-  .player-dead  { opacity:.35; text-decoration:line-through; }
-
-  .key-grid {
-    display:grid; grid-template-columns:repeat(3,32px); gap:3px;
-    justify-content:center; margin-top:4px;
-  }
-  .key {
-    width:32px; height:28px; border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center;
-    font-size:.7rem; color:var(--dim); transition:all .1s;
-  }
-  .key.active { border-color:var(--green); color:var(--green); background:#0a1a0f; }
-  .key-empty  { border-color:transparent; }
-
-  #status {
-    font-size:.72rem; color:var(--dim); letter-spacing:.08em;
-    text-align:center; padding:6px 0;
-  }
-  #status.ok { color:var(--green2); }
-  #status.err{ color:#ff4444; }
-
-  /* ── Mobile controls ── */
-  #mobileCtrl {
-    display:none;
-    grid-template-columns:repeat(3,56px);
-    grid-template-rows:repeat(3,56px);
-    gap:4px; margin-top:10px;
-  }
-  @media (pointer:coarse) { #mobileCtrl { display:grid; } }
-
-  .mkey {
-    background:#0a180d; border:1.5px solid var(--border);
-    color:var(--green); font-size:1.2rem;
-    display:flex; align-items:center; justify-content:center;
-    border-radius:4px; cursor:pointer; user-select:none;
-    -webkit-tap-highlight-color:transparent;
-    transition:background .1s;
-  }
-  .mkey:active { background:var(--green); color:#050f08; }
-
-  /* ── Game over scores ── */
-  #goScores { font-size:.8rem; color:var(--dim); }
-  #goScores span { color:var(--green); }
-
-  .flash { animation: flash .3s ease; }
-  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:.2} }
+#goScores { font-size:.8rem; color:var(--dim); }
+#goScores span { color:var(--green); }
+.flash { animation: flash .3s ease; }
+@keyframes flash { 0%,100%{opacity:1} 50%{opacity:.2} }
 </style>
 </head>
 <body>
-
 <header>
   <h1>🐍 cobrinhaLAN</h1>
   <p>MULTIPLAYER · REDE LOCAL · WEBSOCKET</p>
 </header>
 
 <div class="layout">
-
-  <!-- Canvas -->
   <div id="gameWrap">
     <canvas id="c"></canvas>
 
+    <!-- Countdown -->
+    <div id="countdown">
+      <div id="countdownNum">3</div>
+      <div id="countdownLabel">PREPARAR</div>
+    </div>
+
+    <!-- Main overlay -->
     <div id="overlay">
       <h2 id="ovTitle">cobrinhaLAN</h2>
-      <p  id="ovSub">Conecte ao servidor e entre na partida</p>
+      <p id="ovSub">Conecte ao servidor e entre na partida</p>
       <div class="name-row">
         <input id="nameInput" maxlength="16" placeholder="Seu nome" value="">
         <button class="btn" id="btnConnect">ENTRAR</button>
       </div>
       <div id="status">⬡ desconectado</div>
-      <button class="btn" id="btnStart"  style="display:none">INICIAR JOGO</button>
+      <button class="btn" id="btnStart" style="display:none">INICIAR JOGO</button>
       <button class="btn" id="btnReplay" style="display:none">JOGAR NOVAMENTE</button>
       <div id="goScores"></div>
     </div>
@@ -228,7 +237,6 @@
       <h3>JOGADORES</h3>
       <div id="playerList"><span style="color:var(--dim);font-size:.75rem">Aguardando...</span></div>
     </div>
-
     <div class="panel-box">
       <h3>CONTROLES</h3>
       <div class="key-grid">
@@ -240,7 +248,6 @@
         <div class="key" id="kRight">D▶</div>
       </div>
     </div>
-
     <div class="panel-box">
       <h3>SERVIDOR</h3>
       <div style="font-size:.72rem;color:var(--dim);line-height:1.7">
@@ -258,6 +265,7 @@
 const GRID   = 30;
 const COLORS = ['#33e566','#3d9dff','#ff7a1a','#f23490'];
 const WS_URL = `ws://${location.hostname}:12345`;
+const OPPOSITE = { UP:'DOWN', DOWN:'UP', LEFT:'RIGHT', RIGHT:'LEFT' };
 
 // ── Canvas setup ──────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
@@ -274,16 +282,25 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let ws        = null;
-let myId      = -1;
-let myColor   = COLORS[0];
-let gameData  = null;
-let connected = false;
+let ws         = null;
+let myId       = -1;
+let myColor    = COLORS[0];
+let gameData   = null;
+let connected  = false;
 let activeKeys = new Set();
+
+// [MELHORIA] Input buffer — guarda 1 próxima direção
+let currentDir = null;   // última direção confirmada pelo servidor
+let bufferedDir = null;  // próxima direção a enviar no próximo tick
+
+// [MELHORIA] Nome salvo em localStorage
+const nameInput = document.getElementById('nameInput');
+nameInput.value = localStorage.getItem('cobrinhaName') || '';
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 function connect() {
-  const name = document.getElementById('nameInput').value.trim() || 'Jogador';
+  const name = nameInput.value.trim() || 'Jogador';
+  localStorage.setItem('cobrinhaName', name); // [MELHORIA] salva nome
   setStatus('⟳ conectando...', '');
   document.getElementById('btnConnect').disabled = true;
 
@@ -303,6 +320,7 @@ function connect() {
     switch (msg.type) {
       case 'welcome':
         myId = msg.id; myColor = COLORS[myId];
+        currentDir = 'RIGHT';
         document.getElementById('btnStart').style.display = 'block';
         break;
       case 'reject':
@@ -311,12 +329,15 @@ function connect() {
         break;
       case 'state':
         gameData = msg;
+        // [MELHORIA] Sincroniza direção atual a partir do estado do servidor
+        const me = msg.players.find(p => p.id === myId);
+        if (me && me.dir) currentDir = me.dir;
         updatePlayerList(msg.players);
         draw();
         if (msg.gameState === 'playing') hideOverlay();
         break;
       case 'start':
-        hideOverlay();
+        startCountdown(); // [MELHORIA] contagem regressiva
         break;
       case 'death':
         if (msg.id === myId) flashCanvas();
@@ -327,7 +348,11 @@ function connect() {
     }
   };
 
-  ws.onerror = () => { setStatus('✗ erro de conexão', 'err'); document.getElementById('btnConnect').disabled=false; };
+  ws.onerror = () => {
+    setStatus('✗ erro de conexão', 'err');
+    document.getElementById('btnConnect').disabled = false;
+  };
+
   ws.onclose = () => {
     connected = false;
     setStatus('⬡ desconectado', 'err');
@@ -337,9 +362,46 @@ function connect() {
   };
 }
 
+// [MELHORIA] Envia direção com validação de oposto no cliente
 function sendDir(dir) {
-  if (ws && ws.readyState === WebSocket.OPEN)
-    ws.send(JSON.stringify({ type:'dir', dir }));
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  // Bloqueia 180° — usa bufferedDir como referência se existir
+  const ref = bufferedDir || currentDir;
+  if (ref && dir === OPPOSITE[ref]) return;
+  // Só envia se mudou de direção
+  if (dir === (bufferedDir || currentDir)) return;
+  bufferedDir = dir;
+  ws.send(JSON.stringify({ type:'dir', dir }));
+}
+
+// [MELHORIA] Contagem regressiva 3-2-1-GO
+function startCountdown() {
+  const cdEl  = document.getElementById('countdown');
+  const numEl = document.getElementById('countdownNum');
+  const lblEl = document.getElementById('countdownLabel');
+  hideOverlay();
+  cdEl.style.display = 'flex';
+
+  const steps = [
+    { num:'3', lbl:'PREPARAR' },
+    { num:'2', lbl:'PREPARAR' },
+    { num:'1', lbl:'PREPARAR' },
+    { num:'GO', lbl:'BOA SORTE' },
+  ];
+
+  let i = 0;
+  function step() {
+    if (i >= steps.length) { cdEl.style.display = 'none'; return; }
+    numEl.textContent = steps[i].num;
+    lblEl.textContent = steps[i].lbl;
+    // Força re-trigger da animação
+    numEl.style.animation = 'none';
+    numEl.offsetHeight; // reflow
+    numEl.style.animation = '';
+    i++;
+    setTimeout(step, 900);
+  }
+  step();
 }
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
@@ -347,7 +409,9 @@ let pulse = 0;
 
 function draw() {
   if (!gameData || !CELL) return;
-  pulse += 0.07;
+  // [MELHORIA] pulse com wrap para evitar número infinito
+  pulse = (pulse + 0.07) % (Math.PI * 2);
+
   ctx.clearRect(0, 0, SIZE, SIZE);
 
   // Background grid
@@ -357,7 +421,7 @@ function draw() {
   }
 
   // Food
-  const f = gameData.food;
+  const f  = gameData.food;
   const fp = Math.sin(pulse)*0.5+0.5;
   const grad = ctx.createRadialGradient(
     (f.x+.5)*CELL, (f.y+.5)*CELL, 1,
@@ -377,22 +441,21 @@ function draw() {
     const dim = p.alive ? 1 : 0.28;
 
     for (let i = p.body.length-1; i >= 0; i--) {
-      const seg = p.body[i];
+      const seg    = p.body[i];
       const isHead = i === 0;
-      const t = i / Math.max(p.body.length-1, 1);
-      const sh = isHead ? CELL*.06 : CELL*.13 + t*CELL*.08;
+      const t      = i / Math.max(p.body.length-1, 1);
+      const sh     = isHead ? CELL*.06 : CELL*.13 + t*CELL*.08;
 
       ctx.globalAlpha = dim * (isHead ? 1 : 0.85 - t*0.3);
-      ctx.fillStyle = isHead ? lighten(col, .25) : col;
+      ctx.fillStyle   = isHead ? lighten(col, .25) : col;
       roundRect(ctx, seg.x*CELL+sh, seg.y*CELL+sh, CELL-sh*2, CELL-sh*2, CELL*.18);
 
-      // highlight my snake's head
       if (isHead && p.id === myId && p.alive) {
         ctx.globalAlpha = .55;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle   = '#ffffff';
         roundRect(ctx, seg.x*CELL+sh*.3, seg.y*CELL+sh*.3, CELL-sh*.6, CELL-sh*.6, CELL*.2);
         ctx.globalAlpha = dim;
-        ctx.fillStyle = lighten(col, .3);
+        ctx.fillStyle   = lighten(col, .3);
         roundRect(ctx, seg.x*CELL+sh, seg.y*CELL+sh, CELL-sh*2, CELL-sh*2, CELL*.18);
       }
     }
@@ -403,14 +466,13 @@ function draw() {
   for (const p of gameData.players) {
     if (!p.body || p.body.length===0 || !p.alive) continue;
     const h = p.body[0];
-    ctx.font = `bold ${Math.max(10,CELL*.38)}px 'Share Tech Mono',monospace`;
-    ctx.fillStyle = p.color;
+    ctx.font        = `bold ${Math.max(10,CELL*.38)}px 'Share Tech Mono',monospace`;
+    ctx.fillStyle   = p.color;
     ctx.globalAlpha = .9;
     ctx.fillText(p.score, (h.x+.1)*CELL, (h.y-.12)*CELL);
     ctx.globalAlpha = 1;
   }
 
-  // Waiting overlay on canvas
   if (gameData.gameState === 'lobby') {
     ctx.fillStyle = 'rgba(5,15,8,.55)';
     ctx.fillRect(0,0,SIZE,SIZE);
@@ -422,28 +484,31 @@ function roundRect(ctx, x,y,w,h,r) {
   ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
   ctx.arcTo(x+w,y,x+w,y+r,r);
   ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
-  ctx.lineTo(x+r,y+h);   ctx.arcTo(x,y+h,x,y+h-r,r);
-  ctx.lineTo(x,y+r);     ctx.arcTo(x,y,x+r,y,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
   ctx.closePath(); ctx.fill();
 }
 
 function lighten(hex, amt) {
   const n = parseInt(hex.slice(1),16);
-  const r=Math.min(255,((n>>16)&0xff)+Math.round(amt*80));
-  const g=Math.min(255,((n>>8)&0xff)+Math.round(amt*80));
-  const b=Math.min(255,(n&0xff)+Math.round(amt*80));
+  const r = Math.min(255,((n>>16)&0xff)+Math.round(amt*80));
+  const g = Math.min(255,((n>>8)&0xff)+Math.round(amt*80));
+  const b = Math.min(255,(n&0xff)+Math.round(amt*80));
   return `rgb(${r},${g},${b})`;
 }
 
-// Render loop
-;(function loop() { draw(); requestAnimationFrame(loop); })();
+// Render loop — só desenha quando tem dados
+let rafId = null;
+function startLoop() {
+  if (rafId) return;
+  (function loop() { draw(); rafId = requestAnimationFrame(loop); })();
+}
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 function setStatus(txt, cls) {
   const el = document.getElementById('status');
   el.textContent = txt; el.className = cls;
 }
-
 function hideOverlay() {
   document.getElementById('overlay').style.display = 'none';
 }
@@ -465,12 +530,10 @@ function showGameOver(msg) {
   document.querySelector('.name-row').style.display = 'none';
   document.getElementById('btnStart').style.display = 'none';
   document.getElementById('btnReplay').style.display = 'block';
-
   const scores = (msg.scores||[]).sort((a,b)=>b.score-a.score);
   document.getElementById('goScores').innerHTML =
     scores.map((s,i)=>`<div>${i+1}. ${s.name} — <span>${s.score} pts</span></div>`).join('');
 }
-
 function updatePlayerList(players) {
   const el = document.getElementById('playerList');
   if (!players.length) { el.innerHTML='<span style="color:var(--dim);font-size:.75rem">Aguardando...</span>'; return; }
@@ -482,7 +545,6 @@ function updatePlayerList(players) {
     </div>
   `).join('');
 }
-
 function flashCanvas() {
   canvas.classList.add('flash');
   setTimeout(()=>canvas.classList.remove('flash'),350);
@@ -490,23 +552,28 @@ function flashCanvas() {
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 document.getElementById('btnConnect').onclick = connect;
-document.getElementById('nameInput').addEventListener('keydown', e => { if(e.key==='Enter') connect(); });
+nameInput.addEventListener('keydown', e => { if(e.key==='Enter') connect(); });
 document.getElementById('btnStart').onclick = () => {
   if (ws) ws.send(JSON.stringify({ type:'start' }));
 };
 document.getElementById('btnReplay').onclick = () => {
   if (ws) ws.send(JSON.stringify({ type:'restart' }));
+  currentDir  = 'RIGHT';
+  bufferedDir = null;
   document.getElementById('btnReplay').style.display='none';
 };
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 const KEY_MAP = {
-  ArrowUp:'UP', KeyW:'UP', ArrowDown:'DOWN', KeyS:'DOWN',
-  ArrowLeft:'LEFT', KeyA:'LEFT', ArrowRight:'RIGHT', KeyD:'RIGHT'
+  ArrowUp:'UP',   KeyW:'UP',
+  ArrowDown:'DOWN', KeyS:'DOWN',
+  ArrowLeft:'LEFT', KeyA:'LEFT',
+  ArrowRight:'RIGHT', KeyD:'RIGHT'
 };
 const KEY_EL = { UP:'kUp', DOWN:'kDown', LEFT:'kLeft', RIGHT:'kRight' };
 
 document.addEventListener('keydown', e => {
+  if (document.activeElement === nameInput) return; // não captura enquanto digita nome
   const dir = KEY_MAP[e.code];
   if (!dir) return;
   e.preventDefault();
@@ -516,6 +583,7 @@ document.addEventListener('keydown', e => {
   if (el) el.classList.add('active');
 });
 document.addEventListener('keyup', e => {
+  if (document.activeElement === nameInput) return;
   const dir = KEY_MAP[e.code];
   if (!dir) return;
   activeKeys.delete(dir);
@@ -523,16 +591,38 @@ document.addEventListener('keyup', e => {
   if (el) el.classList.remove('active');
 });
 
-// ── Mobile controls ───────────────────────────────────────────────────────────
+// ── Mobile controls (D-pad + swipe) ──────────────────────────────────────────
 const mKeys = { mUp:'UP', mDown:'DOWN', mLeft:'LEFT', mRight:'RIGHT' };
 for (const [id, dir] of Object.entries(mKeys)) {
   const el = document.getElementById(id);
   el.addEventListener('touchstart', e=>{ e.preventDefault(); sendDir(dir); }, {passive:false});
-  el.addEventListener('mousedown',  ()=> sendDir(dir));
+  el.addEventListener('mousedown', ()=> sendDir(dir));
 }
+
+// [MELHORIA] Swipe gesture no canvas
+let touchStart = null;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive:false });
+
+canvas.addEventListener('touchend', e => {
+  if (!touchStart) return;
+  e.preventDefault();
+  const dx = e.changedTouches[0].clientX - touchStart.x;
+  const dy = e.changedTouches[0].clientY - touchStart.y;
+  touchStart = null;
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // tap, ignora
+  if (Math.abs(dx) > Math.abs(dy)) {
+    sendDir(dx > 0 ? 'RIGHT' : 'LEFT');
+  } else {
+    sendDir(dy > 0 ? 'DOWN' : 'UP');
+  }
+}, { passive:false });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 resizeCanvas();
+startLoop();
 </script>
 </body>
 </html>
